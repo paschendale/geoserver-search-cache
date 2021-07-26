@@ -1,18 +1,22 @@
 const sqlite3 = require('sqlite3').verbose();
-const moment = require('moment')
+const database = require('/data.db');
+const moment = require('moment');
+const path = require('path')
 
 function logTime() {
     return moment().format('MMMM Do YYYY, h:mm:ss a') + ' | '
 }
 
 /* Opening database */
-var db = new sqlite3.Database('./model/data.db', (err) => {
+var db = new sqlite3.Database(path.resolve(__dirname,'data.db'), (err) => {
     if (err) {
         return console.error(err.message)
     }
 
-    console.log(logTime() + 'Successfully opened database at ./model/data.db')
+    console.log(logTime() + 'Successfully opened database at ' + path.resolve(__dirname,'data.db'))
 });
+
+/* Model Functions */
 
 var resultsLimit = 1000; // Set a limit for 1000 rows on a query
 
