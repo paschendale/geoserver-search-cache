@@ -76,4 +76,15 @@ secao_d::text AS attribute,
 'integer' AS type,
 id AS original_id,
 row_to_json("CAD_Secao_Logradouro")::text AS original_row
-from disponibilizacao."CAD_Secao_Logradouro"
+from disponibilizacao."CAD_Secao_Logradouro";
+
+
+CREATE VIRTUAL TABLE cache USING fts4(
+        tokenize=porter,
+        table_name VARCHAR(256) collate nocase,
+        column_name VARCHAR(256) collate nocase,
+        attribute TEXT collate nocase,
+        type TEXT collate nocase,
+        original_id INTEGER,
+        original_row TEXT
+    );
