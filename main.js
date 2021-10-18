@@ -12,5 +12,8 @@ searcher.searchFor(keyword).then(results => console.log(results))
 */
 
 module.exports = {
-    searchFor : db.searchFor
+    searchFor : db.searchFor,
+    cacheTheseTables : db.cacheTheseTables,
+    clearCache :  db.clearCache,
+    retrieveHistory : db.retrieveHistory
 }

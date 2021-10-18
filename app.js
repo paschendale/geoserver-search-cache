@@ -134,3 +134,14 @@ app.post('/cache',(req,res) => {
         .catch(e => res.send(e))
     }
 })
+
+app.get('/history',(req,res) => {
+    res.send(`Use this route to search for specific caching operations like "clearingCache", "updatingCache" or "fetchData", 
+    for example: <a href="/history/fetchData">/history/fetchData</a> or you can search for every operations, for example: <a href="/history/any">/history/any</a>`)
+})
+
+app.get('/history/:operation',(req,res) => {
+    db.retrieveHistory(req.params.operation)
+    .then((results) => {res.send(results)})
+    .catch(e => res.send(e))
+})

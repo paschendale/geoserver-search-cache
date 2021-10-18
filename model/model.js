@@ -1,5 +1,4 @@
 const sqlite3 = require('sqlite3').verbose();
-const database = require('/data.db');
 const path = require('path')
 const fetch = require('node-fetch');
 
@@ -106,7 +105,9 @@ function fetchTheseTables(tables,columns,host,headers) {
                             attribute: result.features[f].properties[columns[t][c]],
                             type: 'text',
                             original_id: f,
-                            original_row: result.features[f].properties
+                            original_row: result.features[f].properties,
+                            original_entry: result.features[f],
+                            geometry: result.features[f].geometry
                         }                   
                         tableForInsert.push(data)
                     }
@@ -115,7 +116,9 @@ function fetchTheseTables(tables,columns,host,headers) {
                 if (t + 1 == tables.length) {           
                     var t1 = new Date().getTime()
                     console.log(logTime() + 'Fetch requisition completed in '+ (t1 - t0)/1000 + ' seconds.')
-                    resolve(tableForInsert)
+                    logCaching(tableForInsert.length,'fetchData',(t1 - t0)/1000,false).then(() => {
+                        resolve(tableForInsert)
+                    })
                 }
             }           
             
@@ -145,7 +148,9 @@ function insertData (data) {
                 "'"+data[i]["attribute"]+"'",
                 "'"+data[i]["type"]+"'",
                 data[i]["original_id"],
-                "'"+JSON.stringify(data[i]["original_row"])+"'"
+                "'"+JSON.stringify(data[i]["original_row"])+"'",
+                "'"+JSON.stringify(data[i]["original_entry"])+"'",
+                "'"+JSON.stringify(data[i]["geometry"])+"'"
             ]
 
             queryString.push('('+row.join()+')')            
@@ -157,7 +162,9 @@ function insertData (data) {
                 attribute,
                 type,
                 original_id,
-                original_row
+                original_row,
+                original_entry,
+                geometry
             ) VALUES ` + queryString.join(',') + ";",
             (err) => {
 
@@ -167,7 +174,9 @@ function insertData (data) {
                 else {
                     t1 = new Date().getTime()
                     console.log(logTime() + 'Succesfully inserted ' + queryString.length + ' rows into database in '+ (t1 - t0)/1000 + ' seconds.')
-                    resolve(logTime() + 'Succesfully inserted ' + queryString.length + ' rows into database in '+ (t1 - t0)/1000 + ' seconds.')
+                    logCaching(queryString.length,'updatingCache',(t1 - t0)/1000,false).then(() => {
+                        resolve(logTime() + 'Succesfully inserted ' + queryString.length + ' rows into database in '+ (t1 - t0)/1000 + ' seconds.')
+                    })        
                 }
             }
         )
@@ -188,6 +197,8 @@ function cacheTheseTables(tables,columns,host,headers) {
 }
 
 function clearCache() {
+    
+    t0 = new Date().getTime()
 
     return new Promise((resolve,reject) => {
         db.run('DELETE FROM cache;',(err) => {
@@ -196,8 +207,55 @@ function clearCache() {
                 reject(err)
             }
             else {
+                var t1 = new Date().getTime()
                 console.log(logTime() + 'Cache database succesfully cleared.')
+                logCaching(0,'clearingCache',(t1 - t0)/1000,true).then(() => {
+                    resolve();
+                })
+            }
+        })
+    })
+}
+
+function logCaching (rowsUpdated,operation,timeSpent,clearedCache) {
+    return new Promise((resolve,reject) => {
+        db.run(`INSERT INTO history(
+            rowsUpdated,
+            operation,
+            timeSpent,
+            clearedCache
+        ) VALUES (` + JSON.stringify(rowsUpdated) + ',' + JSON.stringify(operation) + ',' + JSON.stringify(timeSpent) + ',' + JSON.stringify(clearedCache) +');', (err) => {
+            if (err) {
+                console.log(logTime() + 'Could not save caching statistics on history. Reason: ', err)
+                reject(err)
+            } else {
+                console.log(logTime() + 'Caching statistics succesfully saved on history.')
                 resolve();
+            }
+        })
+    })
+}
+
+function retrieveHistory (operation = 'any') {
+
+    console.log(operation)
+
+    var query = 'SELECT * FROM history'
+
+    if (operation !== 'clearingCache' && operation !== 'updatingCache' && operation !== 'fetchData') {
+        operation = 'any'
+    }
+
+    if (operation !== 'any') {query = query + " WHERE operation LIKE '" + operation + "'"}
+
+    return new Promise ((resolve,reject) => {
+        db.all(query + ';', (err,rows) => {
+            if (err) {
+                console.log(logTime() + 'Could not retrieve caching history. Reason: ' + err)
+                reject(err);
+            } else {
+                console.log(logTime() + 'Caching history retrieved for operations: ' + operation)
+                resolve(rows);
             }
         })
     })
@@ -206,5 +264,6 @@ function clearCache() {
 module.exports = {
     cacheTheseTables,
     searchFor,
-    clearCache
+    clearCache,
+    retrieveHistory
 }

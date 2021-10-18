@@ -86,5 +86,7 @@ CREATE VIRTUAL TABLE cache USING fts4(
         attribute TEXT collate nocase,
         type TEXT collate nocase,
         original_id INTEGER,
-        original_row TEXT
+        original_row TEXT,
+        original_entry TEXT,
+        geometry TEXT
     );
