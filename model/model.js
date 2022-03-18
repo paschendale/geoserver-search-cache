@@ -138,25 +138,30 @@ function insertData (data) {
     new Promise((resolve,reject) => {
 
         t0 = new Date().getTime()
+
+        console.log(logTime() + 'Inserting ' + data.length + ' rows on cache database.')
  
         queryString = [];
 
         for (i = 0;i < data.length; i++) {
+
+            data[i]["attribute"] = (typeof(data[i]["attribute"]) == 'string')? data[i]["attribute"].replaceAll("'","") : data[i]["attribute"]
+
             row = [
                 "'"+data[i]["table_name"]+"'",
                 "'"+data[i]["column_name"]+"'",
-                "'"+data[i]["attribute"]+"'",
+                "'"+data[i]["attribute"]+"'", 
                 "'"+data[i]["type"]+"'",
                 data[i]["original_id"],
-                "'"+JSON.stringify(data[i]["original_row"])+"'",
-                "'"+JSON.stringify(data[i]["original_entry"])+"'",
+                "'"+JSON.stringify(data[i]["original_row"]).replaceAll("'","")+"'",
+                "'"+JSON.stringify(data[i]["original_entry"]).replaceAll("'","")+"'",
                 "'"+JSON.stringify(data[i]["geometry"])+"'"
             ]
 
-            queryString.push('('+row.join()+')')            
+            queryString.push('('+row.join()+')')                        
         }
 
-        db.run(`INSERT INTO cache(
+        query = `INSERT INTO cache(
                 table_name,
                 column_name,
                 attribute,
@@ -165,21 +170,28 @@ function insertData (data) {
                 original_row,
                 original_entry,
                 geometry
-            ) VALUES ` + queryString.join(',') + ";",
-            (err) => {
+            ) VALUES ` + queryString.join(',')
 
-                if (err) {
-                    console.log(logTime() + 'Data insertion did not complete. Reason: ', err)
-                    reject(err)}
-                else {
-                    t1 = new Date().getTime()
+        db.run(query,
+            e => {
+                if (e) {
+                    t1 = new Date().getTime();
+
+                    console.log(logTime() + 'Data insertion did not complete. Reason: ', e)
+                    logCaching(queryString.length,'errorUpdatingCache' + JSON.stringify(e),(t1 - t0)/1000,false)
+                    .then(() => {
+                        reject(e)
+                    })
+                } else {
+                    t1 = new Date().getTime();
+
                     console.log(logTime() + 'Succesfully inserted ' + queryString.length + ' rows into database in '+ (t1 - t0)/1000 + ' seconds.')
-                    logCaching(queryString.length,'updatingCache',(t1 - t0)/1000,false).then(() => {
-                        resolve(logTime() + 'Succesfully inserted ' + queryString.length + ' rows into database in '+ (t1 - t0)/1000 + ' seconds.')
-                    })        
+                    logCaching(queryString.length,'updatingCache',(t1 - t0)/1000,false)
+                    .then(() => {
+                        resolve()
+                    })
                 }
-            }
-        )
+        })     
     })
 }
 
